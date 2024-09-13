@@ -39,22 +39,20 @@ class GreetingPage extends StatelessWidget {
                 fontSize: 24,
               ),
             ),
-            const SizedBox(height: 16), // Add space between text widgets
+            const SizedBox(height: 16),
             const Text(
               'Welcome to Flutter!',
               style: TextStyle(
                 fontSize: 20,
               ),
             ),
-            const SizedBox(height: 16), // Add space between text and image
+            const SizedBox(height: 16),
             Image.asset(
-              'assets/images/1.jpeg', // Replace with a valid image URL
+              'assets/images/1.jpeg',
               height: 200,
               fit: BoxFit.cover,
             ),
-            // If you prefer using local assets, use:
-            // Image.asset('assets/your-local-image.png', height: 200, fit: BoxFit.cover),
-            const SizedBox(height: 16), // Add space between image and button
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
