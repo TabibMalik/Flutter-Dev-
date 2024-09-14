@@ -1,0 +1,120 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: ResponsivePage(),
+    );
+  }
+}
+
+class ResponsivePage extends StatelessWidget {
+  const ResponsivePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(context),
+      drawer: _buildDrawer(context),
+      body: _buildBody(context),
+    );
+  }
+
+  PreferredSizeWidget? _buildAppBar(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+
+    return isMobile
+        ? AppBar(
+      title: const Text('Astrophysics'),
+      actions: [
+        Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+      ],
+    )
+        : null;
+  }
+
+  Widget? _buildDrawer(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+
+    return isMobile
+        ? Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          ListTile(
+            tileColor: Colors.lightBlue,
+            leading: const Icon(Icons.home),
+            title: const Text('Neutron Star'),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.info),
+            title: const Text('Wormhole'),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.contact_mail),
+            title: const Text('String Theory'),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('Settings'),
+            onTap: () {},
+          ),
+        ],
+      ),
+    )
+        : null;
+  }
+
+  Widget _buildBody(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'NEUTRON STAR',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 16.0),
+            Text(
+              'Neutron stars are incredibly dense remnants of massive stars that have exploded in supernovae.\n'
+                  'Their density is so high that a sugar-cube-sized amount would weigh about 100 million tons on Earth.\n'
+                  'Typically, they have a radius of about 10 to 15 kilometers but can have masses between 1.1 and 2.3 times that of the Sun.\n'
+                  'They have extremely strong magnetic fields and can rotate rapidly, up to several hundred times per second.\n'
+                  'Neutron stars are also sources of pulsars, emitting beams of radiation detectable as pulses from Earth.',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 32.0),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green, // Background color
+                foregroundColor: Colors.white, // Text color
+              ),
+              onPressed: () {
+                // Add your onPressed code here!
+              },
+              child: const Text('Learn More'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
