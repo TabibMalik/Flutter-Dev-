@@ -1,0 +1,401 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Shopping App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const ProductListScreen(),
+    );
+  }
+}
+
+class ProductListScreen extends StatefulWidget {
+  const ProductListScreen({super.key});
+
+  @override
+  _ProductListScreenState createState() => _ProductListScreenState();
+}
+
+class _ProductListScreenState extends State<ProductListScreen> {
+  List<Product> _products = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final response =
+      await http.get(Uri.parse('http://164.68.107.70:6060/api/v1/ReadProduct'));
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        setState(() {
+          _products =
+              (jsonData as List).map((jsonProduct) => Product.fromJson(jsonProduct)).toList();
+        });
+      } else {
+        throw Exception('Failed to load products');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading products: $e');
+      }
+    }
+  }
+
+  Future<void> _editProduct(Product product) async {
+    // Navigate to the NewProductPage with the product data
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NewProductPage(product: product),
+      ),
+    );
+    // Refresh product list after editing
+    _loadProducts();
+  }
+
+  Future<void> _deleteProduct(String id) async {
+    try {
+      final response = await http.delete(
+          Uri.parse('http://164.68.107.70:6060/api/v1/DeleteProduct/$id'));
+      if (response.statusCode == 200) {
+        setState(() {
+          _products.removeWhere((product) => product.id == id);
+        });
+      } else {
+        throw Exception('Failed to delete product');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error deleting product: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Product List'),
+      ),
+      body: _products.isEmpty
+          ? const Center(child: Text('No products available'))
+          : ListView.builder(
+        itemCount: _products.length,
+        itemBuilder: (context, index) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _products[index].name,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Unit Price: ${_products[index].unitPrice.toStringAsFixed(2)}'),
+                  Text('Total Price: ${_products[index].totalPrice.toStringAsFixed(2)}'),
+                  Image.network(
+                    _products[index].imageUrl,
+                    height: 150,
+                    width: 150,
+                    fit: BoxFit.cover,
+                  ),
+                  Text('Product Code: ${_products[index].productCode}'),
+                  Text('Quantity: ${_products[index].quantity.toString()}'),
+                  ButtonBar(
+                    alignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          _editProduct(_products[index]);
+                        },
+                        child: const Text('Edit'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          _deleteProduct(_products[index].id!);
+                        },
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const NewProductPage(),
+            ),
+          ).then((_) {
+            _loadProducts(); // Refresh list after returning from creating new product
+          });
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class NewProductPage extends StatefulWidget {
+  final Product? product;
+
+  const NewProductPage({super.key, this.product});
+
+  @override
+  _NewProductPageState createState() => _NewProductPageState();
+}
+
+class _NewProductPageState extends State<NewProductPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _productNameController = TextEditingController();
+  final _unitPriceController = TextEditingController();
+  final _totalPriceController = TextEditingController();
+  final _imageUrlController = TextEditingController();
+  final _productCodeController = TextEditingController();
+  final _quantityController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.product != null) {
+      _productNameController.text = widget.product!.name;
+      _unitPriceController.text = widget.product!.unitPrice.toString();
+      _totalPriceController.text = widget.product!.totalPrice.toString();
+      _imageUrlController.text = widget.product!.imageUrl;
+      _productCodeController.text = widget.product!.productCode;
+      _quantityController.text = widget.product!.quantity.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _productNameController.dispose();
+    _unitPriceController.dispose();
+    _totalPriceController.dispose();
+    _imageUrlController.dispose();
+    _productCodeController.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.product != null ? 'Edit Product' : 'New Product'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: _productNameController,
+                decoration: const InputDecoration(labelText: 'Product Name'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter product name';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _unitPriceController,
+                decoration: const InputDecoration(labelText: 'Unit Price'),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter unit price';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _totalPriceController,
+                decoration: const InputDecoration(labelText: 'Total Price'),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter total price';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _imageUrlController,
+                decoration: const InputDecoration(labelText: 'Product Image URL'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter product image URL';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _productCodeController,
+                decoration: const InputDecoration(labelText: 'Product Code'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter product code';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _quantityController,
+                decoration: const InputDecoration(labelText: 'Quantity'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter quantity';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    if (widget.product != null) {
+                      _updateProduct(widget.product!.id!);
+                    } else {
+                      _createProduct();
+                    }
+                  }
+                },
+                child:
+                Text(widget.product != null ? 'Update Product' : 'Create Product'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _createProduct() async {
+    try {
+      final newProduct = Product(
+        name: _productNameController.text,
+        unitPrice: double.parse(_unitPriceController.text),
+        totalPrice: double.parse(_totalPriceController.text),
+        imageUrl: _imageUrlController.text,
+        productCode: _productCodeController.text,
+        quantity: int.parse(_quantityController.text),
+      );
+      final response = await http.post(
+        Uri.parse('http://164.68.107.70:6060/api/v1/CreateProduct'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(newProduct.toJson()),
+      );
+      if (response.statusCode == 200) {
+        Navigator.pop(context);
+      } else {
+        throw Exception('Failed to create product');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error creating product: $e');
+      }
+    }
+  }
+
+  Future<void> _updateProduct(String id) async {
+    try {
+      final updatedProduct = Product(
+        id: id,
+        name: _productNameController.text,
+        unitPrice: double.parse(_unitPriceController.text),
+        totalPrice: double.parse(_totalPriceController.text),
+        imageUrl: _imageUrlController.text,
+        productCode: _productCodeController.text,
+        quantity: int.parse(_quantityController.text),
+      );
+      final response = await http.put(
+        Uri.parse('http://164.68.107.70:6060/api/v1/UpdateProduct/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(updatedProduct.toJson()),
+      );
+      if (response.statusCode == 200) {
+        Navigator.pop(context);
+      } else {
+        throw Exception('Failed to update product');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        if (kDebugMode) {
+          print('Error updating product: $e');
+        }
+      }
+    }
+  }
+}
+
+class Product {
+  String? id;
+  String name;
+  double unitPrice;
+  double totalPrice;
+  String imageUrl;
+  String productCode;
+  int quantity;
+
+  Product({
+    this.id,
+    required this.name,
+    required this.unitPrice,
+    required this.totalPrice,
+    required this.imageUrl,
+    required this.productCode,
+    required this.quantity,
+  });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['_id'],
+      name: json['name'],
+      unitPrice: json['unitPrice'],
+      totalPrice: json['totalPrice'],
+      imageUrl: json['imageUrl'],
+      productCode: json['productCode'],
+      quantity: json['quantity'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) '_id': id,
+      'name': name,
+      'unitPrice': unitPrice,
+      'totalPrice': totalPrice,
+      'imageUrl': imageUrl,
+      'productCode': productCode,
+      'quantity': quantity,
+    };
+  }
+}
