@@ -40,13 +40,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _loadProducts() async {
     try {
-      final response =
-      await http.get(Uri.parse('http://164.68.107.70:6060/api/v1/ReadProduct'));
+      final response = await http.get(Uri.parse('http://164.68.107.70:6060/api/v1/ReadProduct'));
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         setState(() {
-          _products =
-              (jsonData as List).map((jsonProduct) => Product.fromJson(jsonProduct)).toList();
+          _products = (jsonData as List).map((jsonProduct) => Product.fromJson(jsonProduct)).toList();
         });
       } else {
         throw Exception('Failed to load products');
@@ -59,21 +57,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Future<void> _editProduct(Product product) async {
-    // Navigate to the NewProductPage with the product data
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => NewProductPage(product: product),
       ),
     );
-    // Refresh product list after editing
     _loadProducts();
   }
 
   Future<void> _deleteProduct(String id) async {
     try {
-      final response = await http.delete(
-          Uri.parse('http://164.68.107.70:6060/api/v1/DeleteProduct/$id'));
+      final response = await http.delete(Uri.parse('http://164.68.107.70:6060/api/v1/DeleteProduct/$id'));
       if (response.statusCode == 200) {
         setState(() {
           _products.removeWhere((product) => product.id == id);
@@ -288,8 +283,7 @@ class _NewProductPageState extends State<NewProductPage> {
                     }
                   }
                 },
-                child:
-                Text(widget.product != null ? 'Update Product' : 'Create Product'),
+                child: Text(widget.product != null ? 'Update Product' : 'Create Product'),
               ),
             ],
           ),
@@ -300,19 +294,29 @@ class _NewProductPageState extends State<NewProductPage> {
 
   Future<void> _createProduct() async {
     try {
+      final unitPrice = double.tryParse(_unitPriceController.text);
+      final totalPrice = double.tryParse(_totalPriceController.text);
+      final quantity = int.tryParse(_quantityController.text);
+
+      if (unitPrice == null || totalPrice == null || quantity == null) {
+        throw Exception('Please enter valid numeric values for price and quantity.');
+      }
+
       final newProduct = Product(
         name: _productNameController.text,
-        unitPrice: double.parse(_unitPriceController.text),
-        totalPrice: double.parse(_totalPriceController.text),
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
         imageUrl: _imageUrlController.text,
         productCode: _productCodeController.text,
-        quantity: int.parse(_quantityController.text),
+        quantity: quantity,
       );
+
       final response = await http.post(
         Uri.parse('http://164.68.107.70:6060/api/v1/CreateProduct'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(newProduct.toJson()),
       );
+
       if (response.statusCode == 200) {
         Navigator.pop(context);
       } else {
@@ -322,25 +326,36 @@ class _NewProductPageState extends State<NewProductPage> {
       if (kDebugMode) {
         print('Error creating product: $e');
       }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
   Future<void> _updateProduct(String id) async {
     try {
+      final unitPrice = double.tryParse(_unitPriceController.text);
+      final totalPrice = double.tryParse(_totalPriceController.text);
+      final quantity = int.tryParse(_quantityController.text);
+
+      if (unitPrice == null || totalPrice == null || quantity == null) {
+        throw Exception('Please enter valid numeric values for price and quantity.');
+      }
+
       final updatedProduct = Product(
         id: id,
         name: _productNameController.text,
-        unitPrice: double.parse(_unitPriceController.text),
-        totalPrice: double.parse(_totalPriceController.text),
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
         imageUrl: _imageUrlController.text,
         productCode: _productCodeController.text,
-        quantity: int.parse(_quantityController.text),
+        quantity: quantity,
       );
+
       final response = await http.put(
         Uri.parse('http://164.68.107.70:6060/api/v1/UpdateProduct/$id'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(updatedProduct.toJson()),
       );
+
       if (response.statusCode == 200) {
         Navigator.pop(context);
       } else {
@@ -348,10 +363,9 @@ class _NewProductPageState extends State<NewProductPage> {
       }
     } catch (e) {
       if (kDebugMode) {
-        if (kDebugMode) {
-          print('Error updating product: $e');
-        }
+        print('Error updating product: $e');
       }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 }
