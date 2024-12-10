@@ -1,0 +1,164 @@
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:async';
+
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Map and Location',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  Completer<GoogleMapController> _controller = Completer();
+  final Set<Marker> _markers = {};
+  final List<LatLng> _polylineCoordinates = [];
+  final Set<Polyline> _polylines = {};
+  Timer? _locationTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeLocation();
+  }
+
+  @override
+  void dispose() {
+    _locationTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initializeLocation() async {
+    final permissionGranted = await _isLocationPermissionGranted();
+    if (permissionGranted) {
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (isServiceEnabled) {
+        _updateLocation();
+        _startLocationUpdates();
+      } else {
+        Geolocator.openLocationSettings();
+      }
+    } else {
+      final result = await _requestLocationPermission();
+      if (result) {
+        _initializeLocation();
+      } else {
+        Geolocator.openAppSettings();
+      }
+    }
+  }
+
+  Future<bool> _isLocationPermissionGranted() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+  }
+
+  Future<bool> _requestLocationPermission() async {
+    LocationPermission permission = await Geolocator.requestPermission();
+    return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+  }
+
+  void _startLocationUpdates() {
+    _locationTimer = Timer.periodic(const Duration(seconds: 10), (timer) => _updateLocation());
+  }
+
+  Future<void> _updateLocation() async {
+    Position position = await Geolocator.getCurrentPosition();
+    LatLng newLatLng = LatLng(position.latitude, position.longitude);
+
+    setState(() {
+      _markers.clear();
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('current-location'),
+          position: newLatLng,
+          infoWindow: InfoWindow(
+            title: 'My current location',
+            snippet: '${position.latitude}, ${position.longitude}',
+          ),
+        ),
+      );
+
+      if (_polylineCoordinates.isNotEmpty) {
+        _polylineCoordinates.add(newLatLng);
+      } else {
+        _polylineCoordinates.add(newLatLng);
+      }
+
+      _polylines.clear();
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('location-tracking'),
+          color: Colors.blue,
+          width: 3,
+          points: _polylineCoordinates,
+        ),
+      );
+    });
+
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: newLatLng,
+          zoom: 17,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Map with Location Updates"),
+      ),
+      body: GoogleMap(
+        mapType: MapType.normal,
+        initialCameraPosition: const CameraPosition(
+          target: LatLng(23.750414660785154, 90.43990562892255),
+          zoom: 15,
+        ),
+        onMapCreated: (GoogleMapController controller) {
+          _controller.complete(controller);
+        },
+        markers: _markers,
+        polylines: _polylines,
+        zoomControlsEnabled: true,
+        zoomGesturesEnabled: true,
+        trafficEnabled: true,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final GoogleMapController controller = await _controller.future;
+          if (_polylineCoordinates.isNotEmpty) {
+            controller.animateCamera(
+              CameraUpdate.newLatLng(
+                _polylineCoordinates.last,
+              ),
+            );
+          }
+        },
+        child: const Icon(Icons.my_location),
+      ),
+    );
+  }
+}
